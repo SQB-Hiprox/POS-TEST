@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Simple POS</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Segoe UI', sans-serif;
+    background: #f0f2f5;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  header {
+    background: #1a1a2e;
+    color: #fff;
+    padding: 14px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  header h1 { font-size: 1.2rem; letter-spacing: 1px; }
+
+  .time { font-size: 0.85rem; opacity: 0.7; }
+
+  .container {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  /* ── Product Panel ── */
+  .products-panel {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 16px;
+    overflow: hidden;
+  }
+
+  .search-bar {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+
+  .search-bar input {
+    flex: 1;
+    padding: 10px 14px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    outline: none;
+    background: #fff;
+  }
+
+  .search-bar input:focus { border-color: #6c63ff; }
+
+  .categories {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 14px;
+    flex-wrap: wrap;
+  }
+
+  .cat-btn {
+    padding: 6px 16px;
+    border: none;
+    border-radius: 20px;
+    background: #e0e0e0;
+    cursor: pointer;
+    font-size: 0.82rem;
+    font-weight: 600;
+    transition: all 0.2s;
+  }
+
+  .cat-btn.active { background: #6c63ff; color: #fff; }
+
+  .product-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 12px;
+    overflow-y: auto;
+    flex: 1;
+    padding-right: 4px;
+  }
+
+  .product-card {
+    background: #fff;
+    border-radius: 12px;
+    padding: 16px 12px;
+    text-align: center;
+    cursor: pointer;
+    transition: transform 0.15s, box-shadow 0.15s;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.07);
+    user-select: none;
+    position: relative;
+  }
+
+  .product-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 16px rgba(108,99,255,0.18);
+  }
+
+  .product-card:active { transform: scale(0.97); }
+
+  .product-card .icon { font-size: 2rem; margin-bottom: 8px; }
+
+  .product-card .name {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 4px;
+  }
+
+  .product-card .price {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: #6c63ff;
+  }
+
+  .product-card .stock {
+    font-size: 0.7rem;
+    color: #aaa;
+    margin-top: 4px;
+  }
+
+  .product-card.out-of-stock { opacity: 0.45; pointer-events: none; }
+
+  /* ── Cart Panel ── */
+  .cart-panel {
+    width: 320px;
+    background: #fff;
+    display: flex;
+    flex-direction: column;
+    box-shadow: -4px 0 16px rgba(0,0,0,0.07);
+  }
+
+  .cart-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid #f0f0f0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .cart-header h2 { font-size: 1rem; color: #333; }
+
+  .clear-btn {
+    font-size: 0.75rem;
+    color: #ff5252;
+    cursor: pointer;
+    border: none;
+    background: none;
+    font-weight: 600;
+  }
+
+  .cart-items {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px 16px;
+  }
+
+  .cart-empty {
+    text-align: center;
+    color: #bbb;
+    margin-top: 60px;
+    font-size: 0.9rem;
+  }
+
+  .cart-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 0;
+    border-bottom: 1px solid #f5f5f5;
+  }
+
+  .cart-item .item-icon { font-size: 1.4rem; }
+
+  .cart-item .item-info { flex: 1; }
+
+  .cart-item .item-name { font-size: 0.83rem; font-weight: 600; color: #333; }
+
+  .cart-item .item-price { font-size: 0.78rem; color: #888; }
+
+  .qty-controls {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .qty-btn {
+    width: 24px;
+    height: 24px;
+    border: none;
+    border-radius: 6px;
+    background: #f0f0f0;
+    cursor: pointer;
+    font-size: 1rem;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    color: #555;
+    transition: background 0.15s;
+  }
+
+  .qty-btn:hover { background: #6c63ff; color: #fff; }
+
+  .qty-num { font-size: 0.85rem; font-weight: 700; min-width: 20px; text-align: center; }
+
+  .item-total { font-size: 0.85rem; font-weight: 700; color: #333; min-width: 48px; text-align: right; }
+
+  /* ── Summary ── */
+  .cart-summary {
+    padding: 16px 20px;
+    border-top: 1px solid #f0f0f0;
+  }
+
+  .summary-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.85rem;
+    color: #666;
+    margin-bottom: 6px;
+  }
+
+  .summary-row.total {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: #1a1a2e;
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 2px solid #f0f0f0;
+  }
+
+  .checkout-btn {
+    width: 100%;
+    padding: 14px;
+    background: #6c63ff;
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    font-size: 1rem;
+    font-weight: 700;
+    cursor: pointer;
+    margin-top: 14px;
+    transition: background 0.2s;
+  }
+
+  .checkout-btn:hover { background: #574fd6; }
+  .checkout-btn:disabled { background: #ccc; cursor: not-allowed; }
+
+  /* ── Modal ── */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.45);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
+  }
+
+  .modal-overlay.show { opacity: 1; pointer-events: all; }
+
+  .modal {
+    background: #fff;
+    border-radius: 16px;
+    padding: 28px 32px;
+    width: 360px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.18);
+    transform: translateY(20px);
+    transition: transform 0.2s;
+  }
+
+  .modal-overlay.show .modal { transform: translateY(0); }
+
+  .modal h2 { font-size: 1.1rem; color: #1a1a2e; margin-bottom: 4px; }
+
+  .modal .receipt {
+    background: #f8f8f8;
+    border-radius: 8px;
+    padding: 12px;
+    margin: 14px 0;
+    font-size: 0.8rem;
+    font-family: monospace;
+    line-height: 1.7;
+    max-height: 200px;
+    overflow-y: auto;
+  }
+
+  .modal .cash-section { margin: 14px 0; }
+
+  .modal label { font-size: 0.82rem; font-weight: 600; color: #555; display: block; margin-bottom: 4px; }
+
+  .modal input {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    font-size: 1rem;
+    outline: none;
+  }
+
+  .modal input:focus { border-color: #6c63ff; }
+
+  .change-display {
+    margin-top: 10px;
+    padding: 10px 12px;
+    background: #e8f5e9;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: #2e7d32;
+    text-align: center;
+    display: none;
+  }
+
+  .change-display.show { display: block; }
+
+  .modal-actions { display: flex; gap: 10px; margin-top: 18px; }
+
+  .btn-secondary {
+    flex: 1;
+    padding: 11px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    background: #fff;
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: 600;
+  }
+
+  .btn-primary {
+    flex: 1;
+    padding: 11px;
+    border: none;
+    border-radius: 8px;
+    background: #6c63ff;
+    color: #fff;
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: 600;
+  }
+
+  .btn-primary:disabled { background: #ccc; cursor: not-allowed; }
+
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(60px);
+    background: #1a1a2e;
+    color: #fff;
+    padding: 10px 22px;
+    border-radius: 24px;
+    font-size: 0.88rem;
+    font-weight: 600;
+    z-index: 200;
+    transition: transform 0.3s;
+  }
+
+  .toast.show { transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>&#x2605; Simple POS</h1>
+  <span class="time" id="clock"></span>
+</header>
+
+<div class="container">
+
+  <!-- Products -->
+  <div class="products-panel">
+    <div class="search-bar">
+      <input type="text" id="search" placeholder="Search products..." oninput="renderProducts()">
+    </div>
+    <div class="categories" id="categories"></div>
+    <div class="product-grid" id="product-grid"></div>
+  </div>
+
+  <!-- Cart -->
+  <div class="cart-panel">
+    <div class="cart-header">
+      <h2>&#x1F6D2; Order</h2>
+      <button class="clear-btn" onclick="clearCart()">Clear all</button>
+    </div>
+    <div class="cart-items" id="cart-items">
+      <div class="cart-empty">Cart is empty</div>
+    </div>
+    <div class="cart-summary">
+      <div class="summary-row"><span>Subtotal</span><span id="subtotal">$0.00</span></div>
+      <div class="summary-row"><span>Tax (10%)</span><span id="tax">$0.00</span></div>
+      <div class="summary-row total"><span>Total</span><span id="total">$0.00</span></div>
+      <button class="checkout-btn" id="checkout-btn" onclick="openCheckout()" disabled>Checkout</button>
+    </div>
+  </div>
+</div>
+
+<!-- Checkout Modal -->
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <h2>&#x1F9FE; Order Summary</h2>
+    <div class="receipt" id="receipt-text"></div>
+    <div class="cash-section">
+      <label>Cash Tendered ($)</label>
+      <input type="number" id="cash-input" min="0" step="0.01" placeholder="0.00" oninput="calcChange()">
+      <div class="change-display" id="change-display"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="closeModal()">Cancel</button>
+      <button class="btn-primary" id="confirm-btn" onclick="confirmSale()" disabled>Confirm Sale</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const API = '/api';
+const TAX_RATE = 0.10;
+
+let products = [];
+let cart = {};
+let activeCategory = 'All';
+
+// ── API helpers ───────────────────────────────────────────
+
+async function apiFetch(path, options) {
+  const res = await fetch(API + path, options);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: res.statusText }));
+    throw new Error(err.error || res.statusText);
+  }
+  return res.json();
+}
+
+// ── Boot ─────────────────────────────────────────────────
+
+async function init() {
+  try {
+    const [cats, prods] = await Promise.all([
+      apiFetch('/products/categories'),
+      apiFetch('/products'),
+    ]);
+    products = prods;
+    renderCategories(cats);
+    renderProducts();
+  } catch (e) {
+    document.getElementById('product-grid').innerHTML =
+      `<div style="color:#f44;padding:20px;grid-column:1/-1;text-align:center">Cannot reach server.<br>${e.message}</div>`;
+  }
+}
+
+// ── Products ─────────────────────────────────────────────
+
+function renderCategories(cats) {
+  const el = document.getElementById('categories');
+  el.innerHTML = cats.map(c =>
+    `<button class="cat-btn ${c === activeCategory ? 'active' : ''}" onclick="setCategory('${c}')">${c}</button>`
+  ).join('');
+}
+
+function setCategory(cat) {
+  activeCategory = cat;
+  document.querySelectorAll('.cat-btn').forEach(b =>
+    b.classList.toggle('active', b.textContent === cat)
+  );
+  renderProducts();
+}
+
+function renderProducts() {
+  const query = document.getElementById('search').value.toLowerCase();
+  const grid = document.getElementById('product-grid');
+  const filtered = products.filter(p => {
+    const matchCat = activeCategory === 'All' || p.category === activeCategory;
+    const matchSearch = p.name.toLowerCase().includes(query);
+    return matchCat && matchSearch;
+  });
+
+  grid.innerHTML = filtered.map(p => `
+    <div class="product-card ${p.stock === 0 ? 'out-of-stock' : ''}" onclick="addToCart(${p.id})">
+      <div class="icon">${p.icon}</div>
+      <div class="name">${p.name}</div>
+      <div class="price">$${p.price.toFixed(2)}</div>
+      <div class="stock">${p.stock > 0 ? `${p.stock} left` : 'Out of stock'}</div>
+    </div>
+  `).join('') || '<div style="color:#bbb;padding:20px;grid-column:1/-1;text-align:center">No products found</div>';
+}
+
+// ── Cart ─────────────────────────────────────────────────
+
+function addToCart(id) {
+  const product = products.find(p => p.id === id);
+  if (!product || product.stock === 0) return;
+  if (cart[id]) {
+    if (cart[id].qty >= product.stock) { showToast('Not enough stock!'); return; }
+    cart[id].qty++;
+  } else {
+    cart[id] = { product, qty: 1 };
+  }
+  renderCart();
+}
+
+function updateQty(id, delta) {
+  if (!cart[id]) return;
+  cart[id].qty += delta;
+  if (cart[id].qty <= 0) delete cart[id];
+  renderCart();
+}
+
+function clearCart() {
+  cart = {};
+  renderCart();
+}
+
+function renderCart() {
+  const el = document.getElementById('cart-items');
+  const items = Object.values(cart);
+
+  if (items.length === 0) {
+    el.innerHTML = '<div class="cart-empty">Cart is empty</div>';
+    document.getElementById('checkout-btn').disabled = true;
+    setTotals(0);
+    return;
+  }
+
+  el.innerHTML = items.map(({ product: p, qty }) => `
+    <div class="cart-item">
+      <div class="item-icon">${p.icon}</div>
+      <div class="item-info">
+        <div class="item-name">${p.name}</div>
+        <div class="item-price">$${p.price.toFixed(2)} each</div>
+      </div>
+      <div class="qty-controls">
+        <button class="qty-btn" onclick="updateQty(${p.id}, -1)">−</button>
+        <span class="qty-num">${qty}</span>
+        <button class="qty-btn" onclick="updateQty(${p.id}, 1)">+</button>
+      </div>
+      <div class="item-total">$${(p.price * qty).toFixed(2)}</div>
+    </div>
+  `).join('');
+
+  const subtotal = items.reduce((s, { product: p, qty }) => s + p.price * qty, 0);
+  setTotals(subtotal);
+  document.getElementById('checkout-btn').disabled = false;
+}
+
+function setTotals(subtotal) {
+  const tax = subtotal * TAX_RATE;
+  const total = subtotal + tax;
+  document.getElementById('subtotal').textContent = `$${subtotal.toFixed(2)}`;
+  document.getElementById('tax').textContent = `$${tax.toFixed(2)}`;
+  document.getElementById('total').textContent = `$${total.toFixed(2)}`;
+}
+
+function getTotal() {
+  const items = Object.values(cart);
+  const subtotal = items.reduce((s, { product: p, qty }) => s + p.price * qty, 0);
+  return subtotal * (1 + TAX_RATE);
+}
+
+// ── Checkout ─────────────────────────────────────────────
+
+function openCheckout() {
+  const items = Object.values(cart);
+  if (!items.length) return;
+
+  const subtotal = items.reduce((s, { product: p, qty }) => s + p.price * qty, 0);
+  const tax = subtotal * TAX_RATE;
+  const total = subtotal + tax;
+
+  const lines = items.map(({ product: p, qty }) =>
+    `${p.name.padEnd(16)} x${qty}  $${(p.price * qty).toFixed(2)}`
+  ).join('\n');
+
+  document.getElementById('receipt-text').textContent =
+    `${'─'.repeat(34)}\n${lines}\n${'─'.repeat(34)}\nSubtotal        $${subtotal.toFixed(2)}\nTax (10%)       $${tax.toFixed(2)}\nTotal           $${total.toFixed(2)}\n${'─'.repeat(34)}`;
+
+  document.getElementById('cash-input').value = '';
+  document.getElementById('change-display').classList.remove('show');
+  document.getElementById('confirm-btn').disabled = true;
+  document.getElementById('modal').classList.add('show');
+}
+
+function closeModal() {
+  document.getElementById('modal').classList.remove('show');
+}
+
+function calcChange() {
+  const cash = parseFloat(document.getElementById('cash-input').value) || 0;
+  const total = getTotal();
+  const changeEl = document.getElementById('change-display');
+  const confirmBtn = document.getElementById('confirm-btn');
+
+  if (cash >= total) {
+    const change = cash - total;
+    changeEl.textContent = `Change: $${change.toFixed(2)}`;
+    changeEl.classList.add('show');
+    confirmBtn.disabled = false;
+  } else {
+    changeEl.classList.remove('show');
+    confirmBtn.disabled = true;
+  }
+}
+
+async function confirmSale() {
+  const cash = parseFloat(document.getElementById('cash-input').value);
+  const items = Object.values(cart).map(({ product: p, qty }) => ({
+    product_id: p.id,
+    qty,
+  }));
+
+  document.getElementById('confirm-btn').disabled = true;
+
+  try {
+    await apiFetch('/orders', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ items, cash }),
+    });
+
+    // Refresh product stock from server
+    products = await apiFetch('/products');
+
+    closeModal();
+    clearCart();
+    renderProducts();
+    showToast('Sale completed!');
+  } catch (e) {
+    showToast(e.message);
+    document.getElementById('confirm-btn').disabled = false;
+  }
+}
+
+// ── Utils ─────────────────────────────────────────────────
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+function updateClock() {
+  document.getElementById('clock').textContent = new Date().toLocaleTimeString();
+}
+
+init();
+setInterval(updateClock, 1000);
+updateClock();
+</script>
+</body>
+</html>
